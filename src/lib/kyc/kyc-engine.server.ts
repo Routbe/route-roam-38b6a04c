@@ -20,6 +20,7 @@
  * Pepper: IDENTITY_HASH_PEPPER or PEPPER_SECRET (pepper.server.ts).
  */
 import { Buffer } from "node:buffer";
+import { ageFloorFromVector } from "./age-vector";
 import { canonicalAnchors, wipeAnchors, type CanonicalAnchor } from "./canonical-id";
 import { readDiditDecision, type KycState } from "./didit-decision";
 import { verifyDiditSignature } from "./didit-signature";
