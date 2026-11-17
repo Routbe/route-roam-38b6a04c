@@ -422,3 +422,12 @@
 - [ ] PAdES-LTA via een gekwalificeerde dienst (QTSP) — later, eigenaar kiest de dienst
 - [ ] Leestijd wordt nu in de browser afgedwongen; server-side afdwingen vraagt een extra kolom (volgende migratie)
 
+
+## Overdrachtsdossier 2026-11-17 (open)
+- [x] Build fix: ageFloorFromVector import in src/lib/kyc/kyc-engine.server.ts
+- [ ] Testsuite draaien; deellinks (getProfileShareUrl) en badge-rendering verifiëren
+- [ ] 0290 op Neon — wacht op letterlijke "GO 0290"
+- [ ] age_gate?min_age=N scope (13–21, standaard 18), consent + console docs
+- [ ] PAdES-LTA via CSC API — wacht op keuze QTSP + credentials
+- [ ] getProfileShareUrl + Studio "Kopieer link"/"Delen"
+- [ ] Badges: alleen ontgrendelde publiek, blauw schild verplicht op hoofdprofiel, alias-schakelaar, heraldiek alleen in BadgeEmblem
