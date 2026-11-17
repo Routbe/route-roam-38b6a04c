@@ -1,22 +1,17 @@
-// Vendor-neutral build: standard TanStack Start + Vite 7 plugins. The server
-// target is chosen with NITRO_PRESET (default node-server, or vercel when Vercel
-// builds; see scripts/nitro-target.ts). No hosting provider is assumed.
-import { defineConfig, loadEnv } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import tsConfigPaths from "vite-tsconfig-paths";
-import { nitro } from "nitro/vite";
-
+// @lovable.dev/vite-tanstack-config already includes TanStack devtools, tanstackStart, viteReact,
+// tailwindcss, tsConfigPaths, nitro (build-only), VITE_* env injection, the @ alias, React/TanStack
+// dedupe, error loggers and sandbox detection — do NOT add them again here.
+// Never set ssr.external or resolve.external: the Worker has no runtime module resolution.
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import mdx from "@mdx-js/rollup";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { readdirSync, readFileSync } from "node:fs";
-import { nitroTarget } from "./scripts/nitro-target";
 import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
+// Exposes every src/content/**/*.mdx source as the virtual:rout-docs catalog.
 const docsCatalogPlugin: Plugin = {
   name: "rout-docs-catalog",
   configureServer(server) {
@@ -35,7 +30,9 @@ const docsCatalogPlugin: Plugin = {
     if (catalog) server.moduleGraph.invalidateModule(catalog);
     server.ws.send({ type: "full-reload" });
   },
-  resolveId(id: string) { if (id === "virtual:rout-docs") return "\0virtual:rout-docs"; },
+  resolveId(id: string) {
+    if (id === "virtual:rout-docs") return "\0virtual:rout-docs";
+  },
   load(id: string) {
     if (id !== "\0virtual:rout-docs") return;
     const sources: Record<string, string> = {};
@@ -43,7 +40,8 @@ const docsCatalogPlugin: Plugin = {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const name = `${relative}${entry.name}`;
         if (entry.isDirectory()) visit(resolve(dir, entry.name), `${name}/`);
-        else if (name.endsWith(".mdx")) sources[`/src/content/${name}`] = readFileSync(resolve(dir, entry.name), "utf8");
+        else if (name.endsWith(".mdx"))
+          sources[`/src/content/${name}`] = readFileSync(resolve(dir, entry.name), "utf8");
       }
     };
     visit(resolve("src/content"));
@@ -51,34 +49,24 @@ const docsCatalogPlugin: Plugin = {
   },
 };
 
-export default defineConfig(({ command, mode }) => {
-  const envDefine: Record<string, string> = {};
-  for (const [key, value] of Object.entries(loadEnv(mode, process.cwd(), "VITE_"))) {
-    envDefine[`import.meta.env.${key}`] = JSON.stringify(value);
-  }
-  return {
-    define: envDefine,
+export default defineConfig({
+  tanstackStart: {
+    importProtection: {
+      behavior: "error",
+      client: { files: ["**/server/**"], specifiers: ["server-only"] },
+    },
+    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+    server: { entry: "server" },
+  },
+  plugins: [
+    docsCatalogPlugin,
+    mdx({
+      include: /\.mdx$/,
+      providerImportSource: "@mdx-js/react",
+      remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm],
+    }),
+  ],
+  vite: {
     css: { transformer: "lightningcss" },
-    resolve: {
-      alias: { "@": `${process.cwd()}/src` },
-      dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
-    },
-    optimizeDeps: {
-      include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"],
-    },
-    server: { host: "::", port: Number(process.env["PORT"] ?? 8080) },
-    plugins: [
-      tailwindcss(),
-      tsConfigPaths({ projects: ["./tsconfig.json"] }),
-      tanstackStart({
-        importProtection: { behavior: "error", client: { files: ["**/server/**"], specifiers: ["server-only"] } },
-        // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-        server: { entry: "server" },
-      }),
-      ...(command === "build" ? [nitro(nitroTarget(process.env))] : []),
-      viteReact(),
-      docsCatalogPlugin,
-      mdx({ include: /\.mdx$/, providerImportSource: "@mdx-js/react", remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm] }),
-    ],
-  };
+  },
 });
